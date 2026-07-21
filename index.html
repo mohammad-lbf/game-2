@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بازی تفکیک و دسته‌بندی جانداران - علوم تجربی</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Animate.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+  <!-- Howler.js برای افکت‌های صوتی -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+  <!-- Interact.js برای مدیریت حرفه‌ای Drag and Drop -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+  <!-- Alpine.js برای مدیریت وضعیت بازی -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+
+  <!-- فونت وزیرمتن -->
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    /* استایل کارت‌های قابل درگ با مدیریت Z-Index */
+    .draggable-card {
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+      position: relative;
+      z-index: 10;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* هنگامی که کارت در حال کشیده شدن است بالاترین لایه قرار گیرد */
+    .draggable-card.is-dragging {
+      cursor: grabbing;
+      z-index: 9999 !important;
+      scale: 1.08;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* استایل سطل‌ها (Dropzones) */
+    .dropzone {
+      transition: all 0.25s ease;
+      z-index: 1;
+    }
+
+    .drop-active {
+      border-style: dashed !important;
+    }
+
+    .drop-target {
+      scale: 1.03;
+      filter: brightness(1.2);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-2 sm:p-4" x-data="classificationGame()" x-init="initGame()">
+
+  <!-- کانتینر اصلی -->
+  <div class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative flex flex-col justify-between min-h-[650px]">
+
+    <!-- هدر بازی -->
+    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-3 sm:p-4 text-white flex flex-col sm:flex-row justify-between items-center gap-3 border-b border-slate-700 shadow-md">
+      <div class="text-center sm:text-right">
+        <h1 class="text-base sm:text-2xl font-black flex items-center justify-center sm:justify-start gap-2">
+          <span>🦁🐛</span>
+          <span>طبقه‌بندی جانداران (علوم تجربی)</span>
+        </h1>
+        <p class="text-[11px] sm:text-xs text-emerald-100 mt-1">
+          هر جاندار را بکشید و داخل سطل درست رها کنید!
+        </p>
+      </div>
+
+      <!-- وضعیت امتیاز و باقی‌مانده -->
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div class="bg-slate-900/80 px-3 py-1 rounded-xl border border-slate-700 text-xs font-bold flex items-center gap-1.5">
+          <span class="text-slate-400">امتیاز:</span>
+          <span class="text-emerald-400 font-extrabold text-sm" x-text="score"></span>
+        </div>
+        <div class="bg-slate-900/80 px-3 py-1 rounded-xl border border-slate-700 text-xs font-bold flex items-center gap-1.5">
+          <span class="text-slate-400">باقی‌مانده:</span>
+          <span class="text-amber-400 font-extrabold text-sm" x-text="remainingItems"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- هدر شناسنامه توسعه‌دهنده (ست‌شده با رنگ‌های برنامه) -->
+    <div class="mx-3 sm:mx-6 mt-3 p-2.5 bg-slate-850/80 rounded-xl border border-emerald-500/30 flex flex-col sm:flex-row justify-between items-center gap-2.5 relative z-10 text-xs shadow-inner">
+      <div class="text-center sm:text-right">
+        <span class="text-slate-400">طراح و توسعه دهنده:</span>
+        <span class="text-emerald-400 font-extrabold mr-1">محمد لبافی</span>
+        <span class="text-[10px] text-slate-400 block sm:inline sm:mr-2">(آموزگار و برنامه‌نویس ارشد وب)</span>
+      </div>
+
+      <!-- دکمه لینک اختصاصی -->
+      <a href="https://civilica.com/p/623355/" target="_blank" rel="noopener noreferrer" 
+         class="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black px-3 py-1.5 rounded-lg shadow-md hover:shadow-emerald-500/20 text-[11px] transition active:scale-95 w-full sm:w-auto">
+        <span>👨‍💻 مشاهده رزومه و مقالات توسعه‌دهنده</span>
+        <span class="text-xs">↗</span>
+      </a>
+    </div>
+
+    <!-- منطقه اصلی بازی -->
+    <div class="p-3 sm:p-6 flex-1 flex flex-col justify-between gap-4 sm:gap-6 relative">
+
+      <!-- منطقه سطل‌ها (Drop Target zones) -->
+      <div class="grid grid-cols-2 gap-3 sm:gap-6">
+        
+        <!-- سطل ۱: مهره‌داران -->
+        <div id="drop-vertebrate" data-category="vertebrate" 
+             class="dropzone bg-slate-850 border-2 sm:border-3 border-indigo-500/50 rounded-2xl p-3 sm:p-5 flex flex-col items-center justify-center min-h-[140px] sm:min-h-[190px] shadow-lg relative overflow-hidden">
+          <div class="absolute inset-0 bg-indigo-500/5 pointer-events-none"></div>
+          <span class="text-3xl sm:text-5xl mb-1 sm:mb-2">🦴</span>
+          <h3 class="text-sm sm:text-lg font-black text-indigo-300">مهره‌داران</h3>
+          <span class="text-[9px] sm:text-xs text-slate-400 text-center mt-1 hidden sm:block">دارای اسکلت استخوانی یا غضروفی</span>
+        </div>
+
+        <!-- سطل ۲: بی‌مهره‌ها -->
+        <div id="drop-invertebrate" data-category="invertebrate" 
+             class="dropzone bg-slate-850 border-2 sm:border-3 border-amber-500/50 rounded-2xl p-3 sm:p-5 flex flex-col items-center justify-center min-h-[140px] sm:min-h-[190px] shadow-lg relative overflow-hidden">
+          <div class="absolute inset-0 bg-amber-500/5 pointer-events-none"></div>
+          <span class="text-3xl sm:text-5xl mb-1 sm:mb-2">🐙</span>
+          <h3 class="text-sm sm:text-lg font-black text-amber-300">بی‌مهره‌ها</h3>
+          <span class="text-[9px] sm:text-xs text-slate-400 text-center mt-1 hidden sm:block">بدون ستون فقرات و اسکلت داخلی</span>
+        </div>
+
+      </div>
+
+      <!-- منطقه کارت‌های جانداران (Draggable Area) -->
+      <div class="bg-slate-950/80 rounded-2xl border border-slate-700 p-3 sm:p-5 min-h-[170px] sm:min-h-[200px] flex items-center justify-center relative">
+        <div class="absolute top-2 right-3 text-[10px] text-slate-500 font-bold">جانداران این مرحله (تصادفی):</div>
+        
+        <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-4 w-full pt-4">
+          <template x-for="item in activeItems" :key="item.id">
+            <div :id="`card-${item.id}`" 
+                 :data-id="item.id"
+                 :data-category="item.category"
+                 class="draggable-card bg-slate-800 border-2 border-slate-600 hover:border-teal-400 rounded-xl p-2.5 sm:p-4 flex flex-col items-center justify-center gap-1 shadow-md w-20 sm:w-28 text-center select-none">
+              <span class="text-2xl sm:text-4xl pointer-events-none" x-text="item.icon"></span>
+              <span class="text-[11px] sm:text-xs font-black text-slate-200 pointer-events-none" x-text="item.name"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- فوتر -->
+    <div class="bg-slate-900 border-t border-slate-700/60 px-4 py-2 text-center text-[11px] text-slate-400 flex justify-between items-center">
+      <span>محتوای آموزشی پایه چهارم تا ششم</span>
+      <span>طراحی و توسعه: <strong class="text-emerald-400 font-bold">محمد لبافی</strong></span>
+    </div>
+
+    <!-- پیام بازخورد (Toast) -->
+    <div id="feedback-toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-2xl font-black text-sm text-center transition-all"></div>
+
+    <!-- مدال پایان بازی -->
+    <div x-show="gameFinished" x-transition class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div class="bg-slate-850 border-2 border-emerald-500 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl animate__animated animate__zoomIn">
+        <span class="text-6xl sm:text-7xl">🎉</span>
+        <h2 class="text-2xl font-black text-emerald-400 mt-3">شاهکار بود! دانشمند کوچک!</h2>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+          تمام جانداران را با دقت و به‌درستی در گروه‌های خودشان قرار دادی.
+        </p>
+        <div class="my-5 p-4 bg-emerald-950/50 border border-emerald-500/30 rounded-2xl text-emerald-300 text-sm font-bold">
+          امتیاز نهایی شما: <span class="text-xl font-black text-amber-400" x-text="score"></span>
+        </div>
+        <button @click="resetGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black py-3 rounded-xl transition active:scale-95 text-sm shadow-lg flex items-center justify-center gap-2">
+          <span>بازی مجدد (جانداران جدید)</span>
+          <span>🔄</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // صداهای بازی
+    const sounds = {
+      correct: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'], volume: 0.7 }),
+      wrong: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'], volume: 0.5 }),
+      win: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'], volume: 0.8 })
+    };
+
+    // بانک جامع جانداران جهت انتخاب تصادفی در هر مرحله
+    const masterAnimalsBank = [
+      // مهره‌داران
+      { name: 'عقاب', icon: '🦅', category: 'vertebrate' },
+      { name: 'شیر', icon: '🦁', category: 'vertebrate' },
+      { name: 'ماهی', icon: '🐟', category: 'vertebrate' },
+      { name: 'قورباغه', icon: '🐸', category: 'vertebrate' },
+      { name: 'مار', icon: '🐍', category: 'vertebrate' },
+      { name: 'لاک‌پشت', icon: '🐢', category: 'vertebrate' },
+      { name: 'اسب', icon: '🐎', category: 'vertebrate' },
+      { name: 'پنگوئن', icon: '🐧', category: 'vertebrate' },
+      
+      // بی‌مهره‌ها
+      { name: 'اختاپوس', icon: '🐙', category: 'invertebrate' },
+      { name: 'پروانه', icon: '🦋', category: 'invertebrate' },
+      { name: 'حلزون', icon: '🐌', category: 'invertebrate' },
+      { name: 'عنکبوت', icon: '🕷️', category: 'invertebrate' },
+      { name: 'خرچنگ', icon: '🦀', category: 'invertebrate' },
+      { name: 'زنبور', icon: '🐝', category: 'invertebrate' },
+      { name: 'ستاره دریایی', icon: '⭐', category: 'invertebrate' },
+      { name: 'مورچه', icon: '🐜', category: 'invertebrate' }
+    ];
+
+    function classificationGame() {
+      return {
+        activeItems: [],
+        score: 0,
+        gameFinished: false,
+
+        get remainingItems() {
+          return this.activeItems.length;
+        },
+
+        initGame() {
+          // انتخاب ۶ جاندار به صورت کاملاً تصادفی از بانک جامع
+          const shuffled = [...masterAnimalsBank].sort(() => 0.5 - Math.random());
+          this.activeItems = shuffled.slice(0, 6).map((item, index) => ({
+            ...item,
+            id: index + 1 + Date.now() // شناسه منحصربه‌فرد برای چرخه رندر
+          }));
+
+          this.score = 0;
+          this.gameFinished = false;
+
+          this.$nextTick(() => {
+            this.setupInteractJS();
+          });
+        },
+
+        setupInteractJS() {
+          // غیرفعال‌سازی نمونه‌های قبلی در صورت ریست
+          interact('.draggable-card').unset();
+
+          // پیکربندی قابل درگ بودن کارت‌ها
+          interact('.draggable-card').draggable({
+            inertia: true,
+            modifiers: [
+              interact.modifiers.restrictRect({
+                restriction: 'body',
+                endOnly: true
+              })
+            ],
+            autoScroll: true,
+            listeners: {
+              start: (event) => {
+                event.target.classList.add('is-dragging');
+              },
+              move: this.dragMoveListener,
+              end: (event) => {
+                event.target.classList.remove('is-dragging');
+                if (!event.relatedTarget) {
+                  this.resetPosition(event.target);
+                }
+              }
+            }
+          });
+
+          // پیکربندی سطل‌ها (Dropzones)
+          interact('.dropzone').dropzone({
+            accept: '.draggable-card',
+            overlap: 0.35,
+            ondragenter: (event) => {
+              event.target.classList.add('drop-target');
+              event.relatedTarget.classList.add('drop-active');
+            },
+            ondragleave: (event) => {
+              event.target.classList.remove('drop-target');
+              event.relatedTarget.classList.remove('drop-active');
+            },
+            ondrop: (event) => {
+              const cardEl = event.relatedTarget;
+              const dropEl = event.target;
+
+              const cardCategory = cardEl.getAttribute('data-category');
+              const dropCategory = dropEl.getAttribute('data-category');
+              const cardId = parseInt(cardEl.getAttribute('data-id'));
+
+              if (cardCategory === dropCategory) {
+                // پاسخ درست
+                sounds.correct.play();
+                this.score += 15;
+                
+                cardEl.classList.add('animate__animated', 'animate__zoomOut');
+                this.showToast('آفرین! دسته‌بندی درست بود 👏', 'success');
+
+                setTimeout(() => {
+                  this.activeItems = this.activeItems.filter(item => item.id !== cardId);
+                  if (this.activeItems.length === 0) {
+                    sounds.win.play();
+                    this.gameFinished = true;
+                  }
+                }, 350);
+
+              } else {
+                // پاسخ نادرست
+                sounds.wrong.play();
+                cardEl.classList.add('animate__animated', 'animate__shakeX');
+                this.showToast('اشتباه بود! بیشتر دقت کن 🤔', 'error');
+
+                setTimeout(() => {
+                  cardEl.classList.remove('animate__animated', 'animate__shakeX');
+                  this.resetPosition(cardEl);
+                }, 500);
+              }
+
+              dropEl.classList.remove('drop-target');
+            }
+          });
+        },
+
+        dragMoveListener(event) {
+          const target = event.target;
+          const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+          const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+          target.style.transform = `translate(${x}px, ${y}px)`;
+          target.setAttribute('data-x', x);
+          target.setAttribute('data-y', y);
+        },
+
+        resetPosition(target) {
+          target.style.transform = 'translate(0px, 0px)';
+          target.removeAttribute('data-x');
+          target.removeAttribute('data-y');
+        },
+
+        showToast(message, type) {
+          const toast = document.getElementById('feedback-toast');
+          toast.innerText = message;
+          toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-2xl font-black text-sm text-center transition-all animate__animated animate__fadeInUp ${
+            type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+          }`;
+
+          setTimeout(() => {
+            toast.classList.replace('animate__fadeInUp', 'animate__fadeOutDown');
+          }, 1300);
+        },
+
+        resetGame() {
+          this.initGame();
+        }
+      };
+    }
+  </script>
+</body>
+</html>
